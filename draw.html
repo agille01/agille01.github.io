@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <style>
+    body { margin: 0; background: #ffffff; overflow: hidden; }
+    canvas { display: block; }
+    
+    #ui-layer {
+      position: absolute; bottom: 20px; left: 20px;
+      font-family: 'HALTimezoneMono-regular'; color: #000; font-size: 11.5px;
+      letter-spacing: -0.2px;
+      display: flex; gap: 20px; align-items: center;
+      z-index: 10;
+    }
+
+    button {
+      background: #00fffb; color: #b60000; border: none; padding: 8px 15px;
+      cursor: pointer; font-size: 11px; letter-spacing: 0.5px;
+    }
+    
+    button:hover { background: #444; }
+  </style>
+</head>
+<body>
+
+  <div id="ui-layer">
+    
+    <button id="uploadBtn" onclick="document.getElementById('fileInput').click()"> <span>Upload Drums</span></button>
+    <span>press 'c' to start a new composition</span>
+  </div>
+  
+  <input type="file" id="fileInput" accept="image/*" style="display:none;">
+
+<script>
+let img;
+let allStrokes = []; 
+let currentStroke = null; 
+
+// --- NEW LOGIC FOR CYCLING TEXT ---
+const phrases = [
+  "Upload Drums", 
+  "Upload Guitar", 
+  "Upload Bass", 
+  "Upload Strings", 
+  "Upload Synth", 
+  "Upload Keyboard"
+];
+let phraseIndex = 0;
+// ----------------------------------
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  // Note: ensure p5.createloop is working with your environment
+  if (window.createLoop) {
+    createLoop({duration: 3, gif: true});
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function draw() {
+  background(255);
+
+  if (mouseIsPressed && img) {
+    if (!currentStroke) {
+      currentStroke = new Stroke();
+    }
+    
+    let sW = random(5, 20); 
+    let sH = random(20, 60);
+    let sx = floor(random(0, max(1, img.width - sW)));
+    let sy = floor(random(0, max(1, img.height - sH)));
+    let sample = img.get(sx, sy, floor(sW), floor(sH));
+    
+    currentStroke.addPoint(mouseX, mouseY, sW, sH, sample);
+  }
+
+  for (let s of allStrokes) {
+    s.play();
+  }
+
+  if (currentStroke) {
+    currentStroke.displayAll();
+  }
+}
+
+function mouseReleased() {
+  if (currentStroke) {
+    allStrokes.push(currentStroke);
+    currentStroke = null;
+  }
+}
+
+class Stroke {
+  constructor() {
+    this.points = [];
+    this.playhead = 0;
+  }
+
+  addPoint(x, y, w, h, img) {
+    this.points.push({ x, y, w, h, img });
+  }
+
+  displayAll() {
+    imageMode(CENTER);
+    for (let p of this.points) {
+      image(p.img, p.x, p.y, p.w, p.h);
+    }
+  }
+
+  play() {
+    imageMode(CENTER);
+    for (let i = 0; i < floor(this.playhead); i++) {
+      let p = this.points[i];
+      image(p.img, p.x, p.y, p.w, p.h);
+    }
+    this.playhead += 0.2; 
+    if (this.playhead >= this.points.length) {
+      this.playhead = 0;
+    }
+  }
+}
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  let file = e.target.files[0];
+  if (file) {
+    let url = URL.createObjectURL(file);
+    img = loadImage(url);
+
+    // Update the button text after a successful upload
+    phraseIndex = (phraseIndex + 1) % phrases.length;
+    document.getElementById('uploadBtn').innerText = phrases[phraseIndex];
+  }
+});
+
+function keyPressed() {
+  if (key === 'c' || key === 'C') {
+    allStrokes = [];
+    background(255);
+  }
+  
+  if (key === 's' || key === 'S') {
+    console.log("Recording GIF...");
+    if (window.animator) animator.render(); 
+  }
+}
+</script>
+<script src="https://unpkg.com/p5.createloop@0.1.3/dist/p5.createloop.js"></script>
+</body>
+</html>
